@@ -1,0 +1,77 @@
+version: "3.8"
+
+volumes:
+  zookeeper-data:
+    driver: local
+  zookeeper-log:
+    driver: local
+  kafka-data:
+    driver: local
+
+services:
+
+  clickhouse:
+    image: clickhouse/clickhouse-server
+    user: "101:101"
+    container_name: clickhouse
+    hostname: clickhouse
+    volumes:
+      - ${PWD}/fs/volumes/clickhouse/etc/clickhouse-server/config.d/config.xml:/etc/clickhouse-server/config.d/config.xml
+      - ${PWD}/fs/volumes/clickhouse/etc/clickhouse-server/users.d/users.xml:/etc/clickhouse-server/users.d/users.xml
+    ports:
+      - "127.0.0.1:8123:8123"
+      - "127.0.0.1:9000:9000"
+
+  akhq:
+    image: tchiotludo/akhq
+    restart: always
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            docker-kafka-server:
+              properties:
+                bootstrap.servers: "kafka:9094"
+              schema-registry:
+                url: "http://schema-registry:8085"
+    ports:
+      - 8080:8080
+    links:
+      - kafka
+      - schema-registry
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper
+    restart: always
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data:Z
+      - zookeeper-log:/var/lib/zookeeper/log:Z
+    environment:
+      - deployment/.env.zookeeper
+    ports:
+      - 2181:2181
+
+  kafka:
+    image: confluentinc/cp-kafka
+    restart: always
+    volumes:
+      - kafka-data:/var/lib/kafka/data:Z
+    environment:
+      - deployment/.env.kafka
+    links:
+      - zookeeper
+    ports:
+      - 9092:9092
+
+#  schema-registry:
+#    image: confluentinc/cp-schema-registry
+#    restart: always
+#    depends_on:
+#      - kafka
+#    environment:
+#      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "PLAINTEXT://kafka:9094"
+#      SCHEMA_REGISTRY_HOST_NAME: "schema-registry"
+#      SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8085"
+#      SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: "INFO"
+#    ports:
+#      - 8083:8085
