@@ -5,9 +5,9 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-COPY poetry.lock pyproject.toml ./
+COPY ../../poetry.lock pyproject.toml ./
 RUN python -m pip install --upgrade pip && pip install poetry && poetry config virtualenvs.create false
-COPY . /app
+COPY ../.. /app
 
 
 FROM build_app as prod
